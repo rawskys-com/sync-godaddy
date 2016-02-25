@@ -1,10 +1,9 @@
 package com.rawskys
 
-import scala.concurrent.ExecutionContext.Implicits.global
-
 import com.typesafe.scalalogging.LazyLogging
-import dispatch.{url, Req, Http, host}
+import dispatch.{Http, host, url}
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.io.Source
 
 object App extends LazyLogging {
@@ -23,18 +22,12 @@ object App extends LazyLogging {
     }
   }
 
-  def login(userName: String, password: String) = {
-    val enterPage = godaddy.GET // / "default.aspx"
-    for {
-      response <- Http(enterPage)
-      location <- Seq(response.getHeaders("Location"))
-      cookie <- Seq(response.getCookies)
-      nextResponse <- Http(url(location.toString))
-    } yield logger.info("next: " + nextResponse)
-
-//    val req = godaddy.POST / "default.aspx" << Map("app" -> "idp", "realm" -> "idp", "name" -> userName, "password" -> password)
-//    val a = req.url
-//    val response = Http(req)(global)
-//    logger.info(s"$a")
-  }
+  def login(userName: String, password: String) = for {
+    enterPage <- Http(godaddy.GET / "default.aspx")
+    location = enterPage.getHeader("Location")
+    secondPage <- Http(url(location))
+    location = secondPage.getHeader("Location")
+    loginResponse <- Http(url(location).POST << Map("name" -> userName, "password" -> password))
+    loggedIn = !loginResponse.getCookies.isEmpty
+  } yield logger.info(s"User logged: $loggedIn")
 }
