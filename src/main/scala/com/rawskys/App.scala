@@ -3,7 +3,7 @@ package com.rawskys
 import scala.concurrent.ExecutionContext.Implicits.global
 
 import com.typesafe.scalalogging.LazyLogging
-import dispatch.{Http, host}
+import dispatch.{url, Req, Http, host}
 
 import scala.io.Source
 
@@ -24,10 +24,13 @@ object App extends LazyLogging {
   }
 
   def login(userName: String, password: String) = {
-    val enterPage = godaddy.GET / "default.aspx"
-    Http(enterPage) onFailure {
-      case r => logger.info("message: " + r.getMessage)
-    }
+    val enterPage = godaddy.GET // / "default.aspx"
+    for {
+      response <- Http(enterPage)
+      location <- Seq(response.getHeaders("Location"))
+      cookie <- Seq(response.getCookies)
+      nextResponse <- Http(url(location.toString))
+    } yield logger.info("next: " + nextResponse)
 
 //    val req = godaddy.POST / "default.aspx" << Map("app" -> "idp", "realm" -> "idp", "name" -> userName, "password" -> password)
 //    val a = req.url
